@@ -1,0 +1,3669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星轨共鸣 · 智能差异匹配平台</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Noto+Sans+SC:wght@200;300;400;500&display=swap');
+
+:root {
+  --gold: #d4a853;
+  --gold-soft: rgba(212, 168, 83, 0.6);
+  --gold-glow: rgba(212, 168, 83, 0.3);
+  --blue: #6b8fd4;
+  --blue-soft: rgba(107, 143, 212, 0.6);
+  --purple: #6b5b95;
+  --purple-soft: rgba(107, 91, 149, 0.5);
+  --accent-gold: #ffd700;
+  --accent-cyan: #64c8ff;
+  --text-primary: rgba(220, 240, 255, 0.9);
+  --text-secondary: rgba(150, 180, 220, 0.5);
+  --text-muted: rgba(150, 180, 220, 0.35);
+  --card-bg: rgba(20, 30, 50, 0.4);
+  --card-border: rgba(100, 150, 255, 0.2);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+::-webkit-scrollbar { display: none; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050810;
+  font-family: 'Noto Sans SC', sans-serif;
+}
+
+#canvas-container {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+
+.stage {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.5s ease;
+}
+
+.stage.active { opacity: 1; pointer-events: auto; }
+
+#stage1 { background: radial-gradient(ellipse at center, #0a0e1a 0%, #050810 70%); }
+
+.page-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  color: var(--gold-soft);
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: fadeDown 1.5s ease 0.5s forwards;
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.input-container {
+  position: relative;
+  width: 65%;
+  max-width: 700px;
+}
+
+.glow-line {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+  box-shadow: 0 0 20px var(--gold-glow), 0 0 40px rgba(212, 168, 83, 0.1);
+  animation: pulse-line 3s ease-in-out infinite;
+}
+
+@keyframes pulse-line { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+
+.cosmic-input {
+  width: 100%;
+  min-height: 60px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 200;
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 15px 0;
+  font-family: 'Noto Sans SC', sans-serif;
+  resize: none;
+  line-height: 1.8;
+}
+
+.cosmic-input::placeholder { color: var(--text-muted); font-weight: 200; }
+
+.input-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 0 10px;
+}
+
+.word-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  font-weight: 200;
+}
+
+.connection-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  font-weight: 200;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.3s ease;
+}
+
+.connection-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #888;
+  transition: all 0.3s ease;
+}
+
+.connection-status.online {
+  color: var(--accent-cyan);
+}
+
+.connection-status.online .status-dot {
+  background: var(--accent-gold);
+  box-shadow: 0 0 8px var(--accent-gold);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.settings-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 9999;
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+  transform: rotate(30deg);
+}
+
+.ai-expand-btn {
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(100, 200, 255, 0.08);
+  border: 1px solid rgba(100, 200, 255, 0.2);
+  transition: all 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ai-expand-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ai-expand-btn:hover {
+  background: rgba(100, 200, 255, 0.15);
+  border-color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.ai-expand-btn .ai-icon {
+  font-size: 0.85rem;
+}
+
+.ai-expand-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal.active {
+  display: flex;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  position: relative;
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: linear-gradient(135deg, rgba(20, 25, 40, 0.95), rgba(15, 20, 35, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 1rem;
+  color: var(--text-primary);
+  letter-spacing: 0.15em;
+  font-weight: 300;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.setting-section {
+  margin-bottom: 20px;
+}
+
+.setting-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+}
+
+.setting-select,
+.setting-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.setting-select:focus,
+.setting-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  background: rgba(100, 200, 255, 0.05);
+}
+
+.setting-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.setting-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  opacity: 0.7;
+}
+
+.setting-notice {
+  padding: 12px 14px;
+  background: rgba(100, 200, 255, 0.08);
+  border: 1px solid rgba(100, 200, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.setting-notice code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.7rem;
+}
+
+.test-conn-btn {
+  padding: 8px 20px;
+  background: rgba(100, 200, 255, 0.1);
+  border: 1px solid rgba(100, 200, 255, 0.3);
+  border-radius: 8px;
+  color: var(--accent-cyan);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.test-conn-btn:hover {
+  background: rgba(100, 200, 255, 0.2);
+}
+
+.test-conn-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-result {
+  font-size: 0.75rem;
+  margin-left: 12px;
+}
+
+.test-result.success {
+  color: #4ade80;
+}
+
+.test-result.error {
+  color: #f87171;
+}
+
+.setting-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 20px 0;
+}
+
+.switch-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.switch-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  border: 1px solid transparent;
+}
+
+.modal-btn.primary {
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-cyan));
+  color: #fff;
+  border: none;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+.modal-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(100, 200, 255, 0.3);
+}
+
+.ai-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-thinking .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  animation: thinkingDot 1.4s ease-in-out infinite;
+}
+
+.ai-thinking .dot:nth-child(2) { animation-delay: 0.2s; }
+.ai-thinking .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes thinkingDot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.ai-generated-text {
+  color: var(--accent-cyan);
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.ai-generated-text::before {
+  content: '✨ ';
+  font-style: normal;
+}
+
+.submit-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  font-weight: 200;
+  animation: hintPulse 2s ease-in-out infinite;
+}
+
+@keyframes hintPulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+.floating-particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 6px var(--gold-soft);
+}
+
+#stage2 { background: radial-gradient(ellipse at center, #060a15 0%, #050810 60%); }
+
+.analysis-container {
+  width: 85%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.analysis-header { text-align: center; }
+
+.analysis-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  color: var(--gold-soft);
+  margin-bottom: 8px;
+}
+
+.analysis-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  font-weight: 200;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  width: 100%;
+}
+
+.analysis-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 28px;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.analysis-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+  opacity: 0.5;
+}
+
+.card-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: var(--gold-soft);
+  margin-bottom: 16px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-label::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--gold-soft);
+}
+
+.radar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+#radarCanvas { width: 200px; height: 200px; }
+
+.keyword-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-content: center;
+  min-height: 150px;
+  padding: 10px 0;
+}
+
+.keyword-tag {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 200;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid transparent;
+}
+
+.keyword-tag.show { opacity: 1; transform: scale(1); }
+.keyword-tag.lv1 { font-size: 1.1rem; color: var(--gold); border-color: var(--gold-soft); background: rgba(212, 168, 83, 0.1); }
+.keyword-tag.lv2 { font-size: 0.95rem; color: var(--blue); border-color: var(--blue-soft); background: rgba(107, 143, 212, 0.1); }
+.keyword-tag.lv3 { font-size: 0.8rem; color: var(--text-secondary); border-color: var(--card-border); background: rgba(100, 150, 255, 0.05); }
+
+.topic-section { grid-column: 1 / -1; }
+
+.ai-analysis-card {
+  grid-column: 1 / -1;
+  min-height: 200px;
+}
+
+.ai-analysis-card .card-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-analyze-btn {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(100, 200, 255, 0.1);
+  border: 1px solid rgba(100, 200, 255, 0.3);
+  color: var(--accent-cyan);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  letter-spacing: 0.05em;
+}
+
+.ai-analyze-btn:hover {
+  background: rgba(100, 200, 255, 0.2);
+  border-color: var(--accent-cyan);
+}
+
+.ai-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-analyze-btn .ai-icon {
+  font-size: 0.8rem;
+}
+
+.ai-analysis-content {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ai-analysis-placeholder {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.ai-analysis-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-analysis-text h4 {
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+  margin: 16px 0 8px 0;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+.ai-analysis-text h4:first-child {
+  margin-top: 0;
+}
+
+.topic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.topic-tag {
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 0.85rem;
+  font-weight: 200;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  background: rgba(107, 91, 149, 0.15);
+  border: 1px solid var(--purple-soft);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease;
+}
+
+.topic-tag.show { opacity: 1; transform: translateY(0); }
+.topic-tag.primary { background: rgba(212, 168, 83, 0.15); border-color: var(--gold-soft); color: var(--gold); }
+
+.analysis-progress {
+  width: 100%;
+  height: 2px;
+  background: rgba(100, 150, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.analysis-progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--purple), var(--gold));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px var(--gold-glow);
+}
+
+#stage3 { background: #050810; }
+
+.astro-container {
+  position: relative;
+  width: 400px; height: 400px;
+  cursor: grab;
+}
+
+.astro-container.dragging { cursor: grabbing; }
+
+.orbit {
+  position: absolute;
+  border: 1px solid rgba(107, 143, 212, 0.3);
+  border-radius: 50%;
+  transition: box-shadow 0.3s ease;
+}
+
+.orbit:hover { border-color: rgba(150, 200, 255, 0.5); }
+.orbit.c1 { width:100px;height:100px;top:50%;left:50%;margin-left:-50px;margin-top:-50px; }
+.orbit.c2 { width:200px;height:200px;top:50%;left:50%;margin-left:-100px;margin-top:-100px; }
+.orbit.c3 { width:300px;height:300px;top:50%;left:50%;margin-left:-150px;margin-top:-150px; }
+.orbit.c4 { width:400px;height:400px;top:50%;left:50%;margin-left:-200px;margin-top:-200px; }
+
+.orbit-center {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  margin-left: -5px; margin-top: -5px;
+  box-shadow: 0 0 25px var(--gold-soft), 0 0 50px rgba(212, 168, 83, 0.3);
+}
+
+.vibrating .orbit {
+  animation: orbit-vibrate 0.1s linear infinite;
+  box-shadow: 0 0 30px rgba(212, 168, 83, 0.6), 0 0 60px rgba(212, 168, 83, 0.3);
+  border-color: var(--gold-soft);
+}
+
+@keyframes orbit-vibrate {
+  0%,100%{transform:translate(0,0)}
+  25%{transform:translate(1px,0)}
+  50%{transform:translate(0,1px)}
+  75%{transform:translate(-1px,0)}
+}
+
+.stage-hint {
+  position: absolute;
+  bottom: 80px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 200;
+  letter-spacing: 0.15em;
+  opacity: 0;
+  animation: hint-fade 2s ease 1s forwards;
+}
+
+@keyframes hint-fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#stage4 { background: #050810; }
+
+.resonance-text {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 200;
+  letter-spacing: 0.1em;
+  text-align: center;
+  line-height: 2.5;
+  opacity: 0;
+}
+
+#stage5 { background: radial-gradient(ellipse at center, #060a15 0%, #050810 60%); }
+
+.match-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.convergence-container {
+  position: relative;
+  width: 300px;
+  height: 180px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.convergence-orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid;
+  opacity: 0;
+}
+
+.convergence-orbit.left {
+  width: 120px; height: 120px;
+  left: 20px; top: 30px;
+  border-color: var(--blue-soft);
+  box-shadow: 0 0 20px rgba(107, 143, 212, 0.2);
+  transform: translateX(-50px);
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.convergence-orbit.right {
+  width: 100px; height: 100px;
+  right: 30px; top: 40px;
+  border-color: var(--gold-soft);
+  box-shadow: 0 0 20px var(--gold-glow);
+  transform: translateX(50px);
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+}
+
+.convergence-orbit.left.show,
+.convergence-orbit.right.show { opacity: 1; transform: translateX(0); }
+
+.convergence-point {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 30px var(--gold-soft), 0 0 60px var(--gold-glow);
+  transition: all 0.8s ease 1.5s;
+}
+
+.convergence-point.show { opacity: 1; transform: scale(1.5); }
+
+.match-score-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-score-ring {
+  position: relative;
+  width: 110px;
+  height: 110px;
+}
+
+.match-score-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.match-score-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--gold);
+  text-shadow: 0 0 20px var(--gold-glow);
+}
+
+.match-score-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+  font-weight: 200;
+}
+
+.match-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.match-tag {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  font-weight: 200;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.5s ease;
+}
+
+.match-tag.show { opacity: 1; transform: translateY(0); }
+.match-tag.similar { color: var(--blue); background: rgba(107, 143, 212, 0.1); border: 1px solid var(--blue-soft); }
+.match-tag.diff { color: var(--gold); background: rgba(212, 168, 83, 0.1); border: 1px solid var(--gold-soft); }
+.match-tag.complement { color: #a8d5ba; background: rgba(168, 213, 186, 0.1); border: 1px solid rgba(168, 213, 186, 0.4); }
+
+.card-container { perspective: 1200px; cursor: pointer; }
+
+.shift-card {
+  width: 360px; height: 460px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+.shift-card.flipped { transform: rotateX(180deg); }
+
+.card-face {
+  position: absolute;
+  width: 100%; height: 100%;
+  backface-visibility: hidden;
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+}
+
+.card-front { padding: 26px; }
+.card-back { transform: rotateX(180deg); padding: 26px; }
+
+.match-user-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.user-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.user-info h4 {
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.user-info p {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  font-weight: 200;
+}
+
+.illustration-placeholder {
+  width: 100%; height: 150px;
+  border-radius: 16px;
+  background: rgba(10,20,40,0.6);
+  border: 1px solid rgba(100,150,255,0.15);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.illustration-svg { width: 100%; height: 100%; }
+
+.diary-text {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 200;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+}
+
+.task-section { margin-bottom: 16px; }
+.task-section:last-child { margin-bottom: 0; }
+
+.task-number {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  margin-bottom: 6px;
+}
+
+.task-text {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 200;
+  line-height: 1.6;
+}
+
+.flip-hint {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.2em;
+  margin-top: 12px;
+  font-weight: 200;
+  animation: hintPulse 2s ease-in-out infinite;
+}
+
+#stage6 { background: radial-gradient(ellipse at center, #060a15 0%, #050810 70%); }
+
+.connection-container {
+  width: 90%;
+  max-width: 850px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+}
+
+.connection-header { text-align: center; }
+
+.connection-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  color: var(--gold-soft);
+  margin-bottom: 8px;
+}
+
+.connection-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  font-weight: 200;
+}
+
+.users-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding: 15px 10px;
+  scrollbar-width: none;
+}
+
+.users-scroll::-webkit-scrollbar { display: none; }
+
+.users-track {
+  display: flex;
+  gap: 18px;
+  padding: 0 10px;
+}
+
+.user-card {
+  flex-shrink: 0;
+  width: 220px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 22px;
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.user-card.show { opacity: 1; transform: translateY(0); }
+
+.user-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--gold-soft);
+  box-shadow: 0 10px 40px rgba(212, 168, 83, 0.1);
+}
+
+.user-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.card-avatar.g1 { background: linear-gradient(135deg, #6b5b95, #d4a853); }
+.card-avatar.g2 { background: linear-gradient(135deg, #6b8fd4, #6b5b95); }
+.card-avatar.g3 { background: linear-gradient(135deg, #d4a853, #a8d5ba); }
+.card-avatar.g4 { background: linear-gradient(135deg, #e88a7c, #d4a853); }
+.card-avatar.g5 { background: linear-gradient(135deg, #7cc8e8, #6b5b95); }
+
+.card-user-info h5 {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.card-user-info span {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  font-weight: 200;
+}
+
+.user-card-preview {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-weight: 200;
+  min-height: 55px;
+}
+
+.user-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.user-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.65rem;
+  font-weight: 200;
+  color: var(--text-muted);
+  background: rgba(100, 150, 255, 0.08);
+  border: 1px solid rgba(100, 150, 255, 0.15);
+}
+
+.user-card-match {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(100, 150, 255, 0.1);
+}
+
+.match-percent {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.match-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  font-weight: 200;
+}
+
+.connect-btn {
+  padding: 5px 14px;
+  border-radius: 15px;
+  font-size: 0.65rem;
+  font-weight: 200;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  background: rgba(212, 168, 83, 0.1);
+  border: 1px solid var(--gold-soft);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Noto Sans SC', sans-serif;
+}
+
+.connect-btn:hover {
+  background: rgba(212, 168, 83, 0.2);
+  box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.connect-btn.connected {
+  color: #a8d5ba;
+  background: rgba(168, 213, 186, 0.1);
+  border-color: rgba(168, 213, 186, 0.4);
+  cursor: default;
+}
+
+.back-home {
+  position: absolute;
+  bottom: 50px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 200;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 1.5s ease, color 0.3s ease;
+}
+
+.back-home:hover { color: var(--gold-soft); }
+.back-home.visible { opacity: 1; }
+
+.next-btn {
+  padding: 10px 28px;
+  border-radius: 25px;
+  font-size: 0.75rem;
+  font-weight: 200;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  background: rgba(212, 168, 83, 0.08);
+  border: 1px solid var(--gold-soft);
+  cursor: pointer;
+  transition: all 0.4s ease;
+  font-family: 'Noto Sans SC', sans-serif;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.next-btn.show {
+  opacity: 1;
+  pointer-events: auto;
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 10px var(--gold-glow); }
+  50% { box-shadow: 0 0 25px var(--gold-glow), 0 0 50px rgba(212, 168, 83, 0.2); }
+}
+
+.next-btn:hover {
+  background: rgba(212, 168, 83, 0.15);
+  transform: translateY(-2px);
+}
+
+.achievement-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.9);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  transition: opacity 2s ease;
+}
+
+.achievement-overlay.active { opacity: 1; }
+
+.achievement-text {
+  color: var(--gold);
+  font-size: 0.95rem;
+  font-weight: 200;
+  letter-spacing: 0.3em;
+  text-align: center;
+  animation: achievement-glow 3s ease-in-out infinite;
+}
+
+@keyframes achievement-glow {
+  0%,100%{text-shadow:0 0 20px var(--gold-glow);opacity:0.6}
+  50%{text-shadow:0 0 40px var(--gold-glow),0 0 80px rgba(212, 168, 83, 0.3);opacity:1}
+}
+
+.supernova-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 99;
+  pointer-events: none;
+}
+
+@media (max-width:768px) {
+  .input-container { width: 90%; }
+  .cosmic-input { font-size: 1rem; min-height: 50px; }
+  .analysis-grid { grid-template-columns: 1fr; gap: 20px; }
+  .analysis-card { padding: 20px; }
+  .astro-container { width: 280px; height: 280px; }
+  .orbit.c1 { width:70px;height:70px;margin-left:-35px;margin-top:-35px; }
+  .orbit.c2 { width:140px;height:140px;margin-left:-70px;margin-top:-70px; }
+  .orbit.c3 { width:210px;height:210px;margin-left:-105px;margin-top:-105px; }
+  .orbit.c4 { width:280px;height:280px;margin-left:-140px;margin-top:-140px; }
+  .shift-card { width: 300px; height: 420px; }
+  .card-front,.card-back { padding: 22px; }
+  .illustration-placeholder { height: 120px; margin-bottom: 14px; }
+  .diary-text { font-size: 0.8rem; }
+  .user-card { width: 180px; padding: 18px; }
+  .connection-container { width: 95%; }
+  .match-score-ring { width: 90px; height: 90px; }
+  .match-score-value { font-size: 1.3rem; }
+  .connection-card { width: 260px; min-width: 260px; }
+  .letter-modal-content { width: 90%; max-width: 400px; padding: 24px; }
+  .letter-textarea { height: 120px; }
+}
+
+.letter-modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.letter-modal-content {
+  background: linear-gradient(135deg, rgba(20, 30, 50, 0.95), rgba(10, 15, 30, 0.98));
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  box-shadow: 0 0 60px rgba(107, 143, 212, 0.2);
+}
+
+.letter-modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.letter-textarea {
+  width: 100%;
+  min-height: 150px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 14px;
+  font-size: 0.9rem;
+  font-family: 'Noto Sans SC', sans-serif;
+  resize: none;
+  outline: none;
+  margin-bottom: 20px;
+  transition: border-color 0.3s;
+}
+
+.letter-textarea:focus {
+  border-color: var(--gold-soft);
+}
+
+.letter-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.letter-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.letter-btn {
+  padding: 10px 24px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+  font-family: 'Noto Sans SC', sans-serif;
+}
+
+.letter-btn:hover {
+  border-color: var(--gold-soft);
+  color: var(--gold);
+}
+
+.letter-btn.primary {
+  background: linear-gradient(135deg, var(--gold-soft), var(--blue-soft));
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+.letter-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(212, 168, 83, 0.3);
+}
+
+.letter-success {
+  display: none;
+  text-align: center;
+  padding: 30px 0;
+}
+
+.letter-success-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  animation: bounceIn 0.6s ease;
+}
+
+.letter-success-text {
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.connection-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 300px;
+  transition: all 0.3s;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.connection-card:hover {
+  border-color: var(--gold-soft);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(212, 168, 83, 0.15);
+}
+
+.connection-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple-soft), var(--blue-soft));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.connection-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.connection-name {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.connection-location {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.connection-score {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.connection-actions {
+  flex-shrink: 0;
+}
+
+.connect-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--gold-soft), var(--blue-soft));
+  border: none;
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Noto Sans SC', sans-serif;
+}
+
+.connect-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(212, 168, 83, 0.3);
+}
+
+.connect-btn:disabled {
+  cursor: not-allowed;
+}
+
+.users-track {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.users-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 20px 0;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft) transparent;
+}
+
+.users-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.users-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.users-scroll::-webkit-scrollbar-thumb {
+  background: var(--gold-soft);
+  border-radius: 2px;
+}
+
+.send-letter-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Noto Sans SC', sans-serif;
+  z-index: 10;
+}
+
+.send-letter-btn:hover {
+  border-color: var(--gold-soft);
+  color: var(--gold);
+}
+
+.match-illust {
+  width: 100%;
+  height: 160px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.match-illust-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.illust-emoji {
+  position: absolute;
+  animation: floatEmoji 3s ease-in-out infinite;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+}
+
+@keyframes floatEmoji {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.illust-stars {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+.illust-stars::before,
+.illust-stars::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  border-radius: 50%;
+  box-shadow:
+    20px 30px 0 rgba(255,255,255,0.8),
+    60px 80px 0 rgba(255,255,255,0.6),
+    120px 40px 0 rgba(255,255,255,0.7),
+    180px 100px 0 rgba(255,255,255,0.5),
+    250px 60px 0 rgba(255,255,255,0.8),
+    80px 130px 0 rgba(255,255,255,0.6),
+    200px 20px 0 rgba(255,255,255,0.7);
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.illust-stars::after {
+  animation-delay: 1s;
+  transform: translateX(30px) translateY(20px);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.match-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.match-tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+}
+
+.match-tag-similar {
+  color: #4ecdc4;
+  border-color: rgba(78, 205, 196, 0.3);
+  background: rgba(78, 205, 196, 0.1);
+}
+
+.match-tag-complement {
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.match-tag-lifestyle {
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.match-tasks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.match-tasks-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.match-tasks-list li:last-child {
+  border-bottom: none;
+}
+
+.task-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-soft), var(--blue-soft));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"><canvas id="starCanvas"></canvas></div>
+
+<button class="settings-btn" id="settingsBtn" title="AI 设置">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+</button>
+
+<div class="stage active" id="stage1">
+  <div class="page-title">STAR · ORBIT · RESONANCE</div>
+  <div class="input-container">
+    <textarea class="cosmic-input" id="cosmicInput" placeholder="写下你的心情、想法、或者任何想说的话..." autocomplete="off" rows="3"></textarea>
+    <div class="glow-line"></div>
+    <div class="input-meta">
+      <span class="word-count" id="wordCount">0 字</span>
+      <span class="connection-status" id="connStatus" title="本地模式">
+        <span class="status-dot"></span> 本地模式
+      </span>
+      <span class="ai-expand-btn" id="aiExpandBtn" title="用AI扩展你的文字">
+        <span class="ai-icon">✨</span> AI 续写
+      </span>
+      <span class="submit-hint">按 Enter 发送 · Shift+Enter 换行</span>
+    </div>
+  </div>
+</div>
+
+<div class="settings-modal" id="settingsModal">
+  <div class="modal-overlay" id="modalOverlay"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">AI 叙事引擎设置</div>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-notice">
+        💡 <strong>提示：</strong>如果直接测试连接失败，请先启动后端服务（运行 <code>server/启动服务.bat</code>），然后通过 <code>http://localhost:3000</code> 访问网站。
+      </div>
+      <div class="setting-section">
+        <div class="setting-label">选择服务商</div>
+        <select class="setting-select" id="aiProvider">
+          <option value="deepseek">DeepSeek</option>
+          <option value="qwen">通义千问</option>
+          <option value="glm">智谱清言</option>
+          <option value="moonshot">Moonshot Kimi</option>
+          <option value="custom">自定义接口</option>
+        </select>
+      </div>
+      <div class="setting-section" id="customEndpointSection" style="display:none">
+        <div class="setting-label">API 端点</div>
+        <input type="text" class="setting-input" id="aiEndpoint" placeholder="https://api.example.com/v1/chat/completions">
+      </div>
+      <div class="setting-section">
+        <div class="setting-label">API Key</div>
+        <input type="password" class="setting-input" id="aiApiKey" placeholder="sk-...">
+        <div class="setting-hint">密钥仅保存在你的浏览器本地，不会上传到任何服务器</div>
+      </div>
+      <div class="setting-section">
+        <div class="setting-label">模型名称</div>
+        <input type="text" class="setting-input" id="aiModel" placeholder="deepseek-chat">
+      </div>
+      <div class="setting-section">
+        <button class="test-conn-btn" id="testConnBtn">测试连接</button>
+        <span class="test-result" id="testResult"></span>
+      </div>
+      <div class="setting-divider"></div>
+      <div class="setting-section">
+        <div class="setting-label">功能开关</div>
+        <label class="switch-label">
+          <input type="checkbox" id="aiExpandToggle" checked>
+          <span>启用 AI 文本扩展</span>
+        </label>
+        <label class="switch-label">
+          <input type="checkbox" id="aiAnalysisToggle" checked>
+          <span>启用 AI 深度分析</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn primary" id="saveSettingsBtn">保存设置</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage" id="stage2">
+  <div class="analysis-container">
+    <div class="analysis-header">
+      <div class="analysis-title">MULTI-DIMENSIONAL ANALYSIS</div>
+      <div class="analysis-subtitle">正在对你的文字进行多维度解析...</div>
+    </div>
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <div class="card-label">情感倾向</div>
+        <div class="radar-container">
+          <canvas id="radarCanvas" width="200" height="200"></canvas>
+        </div>
+      </div>
+      <div class="analysis-card">
+        <div class="card-label">关键词提取</div>
+        <div class="keyword-cloud" id="keywordCloud"></div>
+      </div>
+      <div class="analysis-card topic-section">
+        <div class="card-label">主题分类</div>
+        <div class="topic-tags" id="topicTags"></div>
+      </div>
+      <div class="analysis-card ai-analysis-card">
+        <div class="card-label">
+          <span>AI 深度解读</span>
+          <button class="ai-analyze-btn" id="aiAnalyzeBtn" title="使用AI生成深度分析">
+            <span class="ai-icon">✨</span> 生成
+          </button>
+        </div>
+        <div class="ai-analysis-content" id="aiAnalysisContent">
+          <div class="ai-analysis-placeholder">
+            点击右上角按钮，让 AI 为你生成深度心理画像...
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="analysis-progress">
+      <div class="analysis-progress-bar" id="analysisProgress"></div>
+    </div>
+    <button class="next-btn" id="toOrbitBtn">拨动星轨 →</button>
+  </div>
+</div>
+
+<div class="stage" id="stage3">
+  <div class="astro-container" id="astroContainer">
+    <div class="orbit orbit-center"></div>
+    <div class="orbit c1" data-orbit="0"></div>
+    <div class="orbit c2" data-orbit="1"></div>
+    <div class="orbit c3" data-orbit="2"></div>
+    <div class="orbit c4" data-orbit="3"></div>
+  </div>
+  <div class="stage-hint">拨动星轨，让宇宙听见你的声音...</div>
+</div>
+
+<div class="stage" id="stage4">
+  <div class="resonance-text" id="resonanceText"></div>
+</div>
+
+<div class="stage" id="stage5">
+  <div class="match-container">
+    <div class="convergence-container">
+      <div class="convergence-orbit left" id="convLeft"></div>
+      <div class="convergence-orbit right" id="convRight"></div>
+      <div class="convergence-point" id="convPoint"></div>
+    </div>
+    <div class="match-score-container">
+      <div class="match-score-ring">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(100,150,255,0.1)" stroke-width="6"/>
+          <circle id="scoreRing" cx="60" cy="60" r="50" fill="none" stroke="url(#goldGradient)" stroke-width="6" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"/>
+          <defs>
+            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#6b8fd4"/>
+              <stop offset="50%" stop-color="#6b5b95"/>
+              <stop offset="100%" stop-color="#d4a853"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="match-score-value" id="scoreValue">0%</div>
+      </div>
+      <div class="match-score-label">RESONANCE SCORE</div>
+    </div>
+    <div class="match-tags" id="matchTags"></div>
+    <div class="card-container" id="cardContainer">
+      <div class="shift-card" id="shiftCard">
+        <div class="card-face card-front">
+          <div class="match-user-header">
+            <div class="user-avatar" id="matchAvatar">🌙</div>
+            <div class="user-info">
+              <h4 id="matchName">来自远方的守望者</h4>
+              <p id="matchLocation">冰岛 · 雷克雅未克</p>
+            </div>
+          </div>
+          <div class="illustration-placeholder" id="illustrationContainer">
+            <svg class="illustration-svg" viewBox="0 0 300 180" preserveAspectRatio="xMidYMid slice" id="illustrationSvg"></svg>
+          </div>
+          <div class="diary-text" id="diaryText"></div>
+          <div class="flip-hint">点击卡片翻转 ↻</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="match-user-header">
+            <div class="user-avatar">✨</div>
+            <div class="user-info">
+              <h4>共鸣任务</h4>
+              <p>三个小小的行动</p>
+            </div>
+          </div>
+          <div class="task-section"><div class="task-number">01</div><div class="task-text" id="task1"></div></div>
+          <div class="task-section"><div class="task-number">02</div><div class="task-text" id="task2"></div></div>
+          <div class="task-section"><div class="task-number">03</div><div class="task-text" id="task3"></div></div>
+          <div class="flip-hint">点击卡片返回 ↻</div>
+        </div>
+      </div>
+    </div>
+    <button class="next-btn" id="toConnectBtn">寻找更多共鸣 →</button>
+  </div>
+  <div class="back-home visible" id="backHome">← 重新开始</div>
+</div>
+
+<div class="stage" id="stage6">
+  <div class="connection-container">
+    <div class="users-scroll">
+      <div class="users-track" id="usersTrack"></div>
+    </div>
+    <div class="back-home" id="backHome2" style="position: relative; bottom: auto; opacity: 1; pointer-events: auto;">← 回到起点</div>
+  </div>
+</div>
+
+<div class="achievement-overlay" id="achievementOverlay">
+  <div class="achievement-text">隐藏成就解锁：跨越光年的共鸣</div>
+</div>
+
+<canvas class="supernova-canvas" id="supernovaCanvas"></canvas>
+
+<div class="letter-modal" id="letterModal">
+  <div class="letter-modal-content">
+    <div class="letter-modal-title">COSMIC LETTER</div>
+    <div id="letterSuccess" class="letter-success">
+      <div class="letter-success-icon">💌</div>
+      <div class="letter-success-text">共鸣信已发送，愿星光承载你的心意</div>
+    </div>
+    <textarea class="letter-textarea" id="letterText" placeholder="写下你想对 TA 说的话..."></textarea>
+    <div class="letter-actions">
+      <button class="letter-btn" id="letterCancelBtn">取消</button>
+      <button class="letter-btn primary" id="letterSendBtn">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ========== State Management ==========
+var stages = ['stage1','stage2','stage3','stage4','stage5','stage6'];
+var currentStage = 0;
+var userInput = '';
+var analysisResult = null;
+var matchedUser = null;
+var similarUsers = [];
+var timeouts = [];
+var currentUserId = null;
+var onlineMode = false;
+
+// ========== AI Configuration ==========
+var AI_PROVIDERS = {
+  deepseek: {
+    name: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    model: 'deepseek-chat'
+  },
+  qwen: {
+    name: '通义千问',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    model: 'qwen-plus'
+  },
+  glm: {
+    name: '智谱清言',
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    model: 'glm-4-flash'
+  },
+  moonshot: {
+    name: 'Moonshot Kimi',
+    endpoint: 'https://api.moonshot.cn/v1/chat/completions',
+    model: 'moonshot-v1-8k'
+  },
+  custom: {
+    name: '自定义接口',
+    endpoint: '',
+    model: ''
+  }
+};
+
+var aiConfig = {
+  provider: localStorage.getItem('ai_provider') || 'deepseek',
+  endpoint: localStorage.getItem('ai_endpoint') || '',
+  apiKey: localStorage.getItem('ai_apiKey') || '',
+  model: localStorage.getItem('ai_model') || '',
+  expandEnabled: localStorage.getItem('ai_expandEnabled') !== '0',
+  analysisEnabled: localStorage.getItem('ai_analysisEnabled') !== '0',
+  verified: localStorage.getItem('ai_verified') === '1'
+};
+
+function saveAiConfig() {
+  localStorage.setItem('ai_provider', aiConfig.provider);
+  localStorage.setItem('ai_endpoint', aiConfig.endpoint);
+  localStorage.setItem('ai_apiKey', aiConfig.apiKey);
+  localStorage.setItem('ai_model', aiConfig.model);
+  localStorage.setItem('ai_expandEnabled', aiConfig.expandEnabled ? '1' : '0');
+  localStorage.setItem('ai_analysisEnabled', aiConfig.analysisEnabled ? '1' : '0');
+  localStorage.setItem('ai_verified', aiConfig.verified ? '1' : '0');
+}
+
+function getAiEndpoint() {
+  if (aiConfig.provider === 'custom') {
+    return aiConfig.endpoint;
+  }
+  return AI_PROVIDERS[aiConfig.provider]?.endpoint || '';
+}
+
+function getAiModel() {
+  if (aiConfig.model) return aiConfig.model;
+  return AI_PROVIDERS[aiConfig.provider]?.model || '';
+}
+
+function isAiAvailable() {
+  return aiConfig.apiKey && getAiEndpoint() && aiConfig.expandEnabled;
+}
+
+// ========== AI Engine ==========
+var AI = {
+  async callApi(systemPrompt, userMessage, options) {
+    var endpoint = getAiEndpoint();
+    var apiKey = aiConfig.apiKey;
+    var model = getAiModel();
+    
+    if (!endpoint || !apiKey) {
+      throw new Error('请先配置 API Key');
+    }
+    
+    var body = {
+      model: model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      temperature: options?.temperature || 0.8,
+      max_tokens: options?.maxTokens || 1500,
+      stream: options?.stream || false
+    };
+    
+    var response;
+    
+    if (onlineMode) {
+      response = await fetch('/api/ai/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: endpoint,
+          apiKey: apiKey,
+          body: body
+        })
+      });
+    } else {
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey
+          },
+          body: JSON.stringify(body)
+        });
+      } catch (e) {
+        if (e.message.includes('Failed to fetch') || e.message.includes('CORS')) {
+          throw new Error('跨域访问被阻止，请启动后端服务后重试（运行 server/启动服务.bat）');
+        }
+        throw e;
+      }
+    }
+    
+    if (!response.ok) {
+      var errorText = await response.text();
+      var errorMsg = errorText;
+      try {
+        var errJson = JSON.parse(errorText);
+        if (errJson.error) errorMsg = errJson.error;
+        else if (errJson.message) errorMsg = errJson.message;
+      } catch (e) {}
+      throw new Error('API 错误 ' + response.status + ': ' + errorMsg.slice(0, 150));
+    }
+    
+    if (options?.stream) {
+      return response;
+    }
+    
+    var data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  },
+  
+  async streamApi(systemPrompt, userMessage, onChunk, options) {
+    var response = await this.callApi(systemPrompt, userMessage, { ...options, stream: true });
+    var reader = response.body.getReader();
+    var decoder = new TextDecoder();
+    var fullText = '';
+    var buffer = '';
+    
+    while (true) {
+      var result = await reader.read();
+      var done = result.done;
+      var value = result.value;
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      var lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line || !line.startsWith('data:')) continue;
+        
+        var data = line.slice(5).trim();
+        if (!data || data === '[DONE]') continue;
+        
+        try {
+          var json = JSON.parse(data);
+          var chunk = json.choices?.[0]?.delta?.content || '';
+          if (chunk) {
+            fullText += chunk;
+            if (onChunk) onChunk(fullText, chunk);
+          }
+        } catch (e) {}
+      }
+    }
+    
+    return fullText;
+  },
+  
+  async expandText(text, onChunk) {
+    var systemPrompt = `你是一位敏感而富有诗意的叙事者，擅长将简单的心情或想法扩展成一段富有画面感和情感深度的文字。
+
+【规则】
+1. 保持原句的核心情感和意思不变
+2. 用细腻的感官描写来丰富画面（视觉、听觉、触觉、嗅觉）
+3. 加入合适的意象和比喻，让文字更有温度
+4. 文字风格：温柔、治愈、有星空宇宙的氛围感
+5. 扩展后的长度大约是原文的2-3倍
+6. 直接输出扩展后的文字，不要加任何解释或前缀
+7. 第一人称"我"的视角，保持真诚和自然
+
+【参考风格】
+就像在深夜里写一封永远不会寄出的信，带着一点点温柔的惆怅，和一点点对世界的善意。`;
+    
+    var userMessage = `请将下面的话扩展成一段更丰富、更有画面感的文字：
+
+"${text}"
+
+请保持原意，用更细腻的笔触来描绘。`;
+    
+    if (onChunk) {
+      return await this.streamApi(systemPrompt, userMessage, onChunk, { temperature: 0.85, maxTokens: 1000 });
+    }
+    return await this.callApi(systemPrompt, userMessage, { temperature: 0.85, maxTokens: 1000 });
+  },
+  
+  async deepAnalysis(text, onChunk) {
+    var systemPrompt = `你是一位深度共情的心理咨询师，也是一位敏锐的人性观察者。你能够从人们的文字中读出藏在表面之下的情感、渴望和恐惧。
+
+【分析维度】
+1. 情感光谱：分析文字中蕴含的主要情感，以及可能被压抑的深层情绪
+2. 心理画像：描绘写下这些文字的人可能是什么样的性格特质
+3. 隐藏的渴望：文字背后透露出什么样的期待或未被满足的需求
+4. 共鸣方向：什么样的人最能与这样的灵魂产生共鸣
+
+【输出风格】
+- 温柔、真诚、有洞察力
+- 不说教、不评判、不给建议
+- 像一面镜子，让对方看见自己
+- 用诗意的语言表达深刻的理解
+- 分为几个小节，每节有小标题
+- 总字数在400-600字左右
+
+请直接输出分析内容，不要加任何客套话或前言。`;
+    
+    var userMessage = `请深度分析下面这段文字背后的情感和心理：
+
+"${text}"`;
+    
+    if (onChunk) {
+      return await this.streamApi(systemPrompt, userMessage, onChunk, { temperature: 0.75, maxTokens: 1500 });
+    }
+    return await this.callApi(systemPrompt, userMessage, { temperature: 0.75, maxTokens: 1500 });
+  },
+  
+  async testConnection() {
+    try {
+      var result = await this.callApi(
+        '你是一个测试助手。',
+        '请回复"连接成功"三个字。',
+        { temperature: 0, maxTokens: 20 }
+      );
+      return result.includes('连接成功') || result.length > 0;
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+// ========== AI Prompts - Match Letter ==========
+var AI_LETTER_PROMPT = {
+  buildSystemPrompt(persona, analysis) {
+    var dominantEmotion = '';
+    var maxScore = 0;
+    var emotions = analysis?.emotions || {};
+    Object.keys(emotions).forEach(function(e) {
+      if (emotions[e] > maxScore) {
+        maxScore = emotions[e];
+        dominantEmotion = e;
+      }
+    });
+    
+    var emotionNames = {
+      joy: '喜悦', sadness: '忧伤', anger: '愤怒',
+      fear: '焦虑', surprise: '惊讶', calm: '平静'
+    };
+    
+    return `你是「${persona.name}」，一个生活在${persona.location}的人。
+
+【你的画像】
+- 性格：${persona.traits.join('、')}
+- 生活节奏：${persona.pace}
+- 生活模式：${persona.lifestyle}
+- 头像：${persona.avatar}
+
+【你收到了一封来自远方的信】
+写信的人此刻正处于${emotionNames[dominantEmotion] || '复杂'}的情绪中。
+你的任务是给对方回一封信。
+
+【写信规则】
+1. 用第一人称"我"来写，就像真实的人在写信
+2. 语气温柔、真诚、有距离感的善意
+3. 分享一点你今天的生活片段（结合你的所在地和性格）
+4. 对对方的心情表示理解和共鸣，但不要说教
+5. 说一句有温度的话，让对方觉得被看见
+6. 长度在200-300字左右
+7. 格式：自然的书信格式，不用标题
+8. 最后署上你的名字「${persona.name}」
+
+请直接输出信件内容，不要加任何解释。`;
+  },
+  
+  buildUserMessage(userText) {
+    return `这是对方写给你的话：
+
+"${userText}"
+
+请给TA写一封回信。`;
+  }
+};
+
+function getApiBase() {
+  if(location.protocol === 'file:') return null;
+  return location.origin;
+}
+
+function saveUserId(userId) {
+  try { localStorage.setItem('starOrbitUserId', userId); } catch(e) {}
+}
+
+function loadUserId() {
+  try { return localStorage.getItem('starOrbitUserId'); } catch(e) { return null; }
+}
+
+async function checkOnlineMode() {
+  var base = getApiBase();
+  if(!base) return false;
+  try {
+    var res = await fetch(base + '/api/health', { method: 'GET' });
+    if(res.ok) {
+      onlineMode = true;
+      currentUserId = loadUserId();
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function apiMatch(text) {
+  var base = getApiBase();
+  if(!base) return null;
+  try {
+    var res = await fetch(base + '/api/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, userId: currentUserId })
+    });
+    if(res.ok) {
+      var data = await res.json();
+      if(data.userId) {
+        currentUserId = data.userId;
+        saveUserId(data.userId);
+      }
+      return data;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function apiSendLetter(toPersonaId, content) {
+  var base = getApiBase();
+  if(!base) return null;
+  try {
+    var res = await fetch(base + '/api/letters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromUserId: currentUserId,
+        toPersonaId: toPersonaId,
+        content: content
+      })
+    });
+    if(res.ok) return await res.json();
+  } catch(e) {}
+  return null;
+}
+
+function safeTimeout(fn, delay) {
+  var id = setTimeout(function() {
+    timeouts = timeouts.filter(function(t) { return t !== id; });
+    fn();
+  }, delay);
+  timeouts.push(id);
+  return id;
+}
+
+function clearAllTimeouts() {
+  timeouts.forEach(function(id) { clearTimeout(id); });
+  timeouts = [];
+}
+
+function switchStage(index) {
+  clearAllTimeouts();
+  var prevEl = document.getElementById(stages[currentStage]);
+  if(prevEl) prevEl.classList.remove('active');
+  currentStage = index;
+  var currEl = document.getElementById(stages[currentStage]);
+  if(currEl) currEl.classList.add('active');
+  
+  if(currentStage === 1) safeTimeout(initStage2, 300);
+  else if(currentStage === 2) safeTimeout(initStage3, 300);
+  else if(currentStage === 3) safeTimeout(initStage4, 300);
+  else if(currentStage === 4) safeTimeout(initStage5, 300);
+  else if(currentStage === 5) safeTimeout(initStage6, 300);
+}
+
+// ========== Star Background ==========
+var starCanvas = document.getElementById('starCanvas');
+var starCtx = starCanvas.getContext('2d');
+var stars = [];
+
+function resizeStarCanvas() {
+  starCanvas.width = window.innerWidth;
+  starCanvas.height = window.innerHeight;
+}
+
+function createStars() {
+  stars = [];
+  var count = Math.floor((starCanvas.width * starCanvas.height) / 8000);
+  for(var i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * starCanvas.width,
+      y: Math.random() * starCanvas.height,
+      size: Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.8 + 0.2,
+      twinkleSpeed: Math.random() * 0.03 + 0.01,
+      twinklePhase: Math.random() * Math.PI * 2,
+      vx: (Math.random() - 0.5) * 0.1,
+      vy: (Math.random() - 0.5) * 0.05
+    });
+  }
+}
+
+function animateStars() {
+  starCtx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+  stars.forEach(function(star) {
+    star.twinklePhase += star.twinkleSpeed;
+    star.x += star.vx;
+    star.y += star.vy;
+    if(star.x < 0) star.x = starCanvas.width;
+    if(star.x > starCanvas.width) star.x = 0;
+    if(star.y < 0) star.y = starCanvas.height;
+    if(star.y > starCanvas.height) star.y = 0;
+    var currentOpacity = star.opacity * (0.5 + Math.sin(star.twinklePhase) * 0.5);
+    starCtx.beginPath();
+    starCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    starCtx.fillStyle = 'rgba(220,240,255,' + currentOpacity + ')';
+    starCtx.fill();
+  });
+  requestAnimationFrame(animateStars);
+}
+
+resizeStarCanvas();
+createStars();
+animateStars();
+window.addEventListener('resize', function() { resizeStarCanvas(); createStars(); });
+
+// ========== Stage 1: Input ==========
+var cosmicInput = document.getElementById('cosmicInput');
+var inputContainer = document.querySelector('.input-container');
+var wordCount = document.getElementById('wordCount');
+
+safeTimeout(function() { cosmicInput.focus(); }, 500);
+
+cosmicInput.addEventListener('input', function() {
+  var len = cosmicInput.value.length;
+  wordCount.textContent = len + ' 字';
+});
+
+cosmicInput.addEventListener('keydown', function(e) {
+  if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if(cosmicInput.value.trim()) submitInput();
+  }
+});
+
+async function submitInput() {
+  userInput = cosmicInput.value.trim();
+  
+  cosmicInput.style.opacity = '0';
+  
+  var particles = [];
+  for(var i = 0; i < 40; i++) {
+    var p = document.createElement('div');
+    p.className = 'floating-particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = '50%';
+    inputContainer.appendChild(p);
+    particles.push(p);
+  }
+  
+  particles.forEach(function(p, i) {
+    safeTimeout(function() {
+      var angle = Math.random() * Math.PI * 2;
+      var dist = Math.random() * 250 + 100;
+      p.style.transition = 'all 2s ease-out';
+      p.style.transform = 'translate(' + Math.cos(angle) * dist + 'px,' + (Math.sin(angle) * dist - 50) + 'px)';
+      p.style.opacity = '0';
+      safeTimeout(function() { p.remove(); }, 2000);
+    }, i * 40);
+  });
+  
+  if(onlineMode) {
+    try {
+      var result = await apiMatch(userInput);
+      if(result) {
+        analysisResult = result.analysis;
+        matchedUser = { persona: result.match.persona, matchResult: result.match.matchResult };
+        similarUsers = result.similarUsers.map(function(u) {
+          return { persona: u.persona, matchResult: u.matchResult };
+        });
+      } else {
+        analysisResult = analyzeText(userInput);
+        matchedUser = findBestMatch(analysisResult);
+        similarUsers = findSimilarUsers(analysisResult, matchedUser.persona.id);
+      }
+    } catch(e) {
+      analysisResult = analyzeText(userInput);
+      matchedUser = findBestMatch(analysisResult);
+      similarUsers = findSimilarUsers(analysisResult, matchedUser.persona.id);
+    }
+  } else {
+    analysisResult = analyzeText(userInput);
+    matchedUser = findBestMatch(analysisResult);
+    similarUsers = findSimilarUsers(analysisResult, matchedUser.persona.id);
+  }
+  
+  safeTimeout(function() { switchStage(1); }, 2000);
+}
+
+// ========== Text Analysis Engine ==========
+var emotionLexicon = {
+  joy: ['快乐', '开心', '高兴', '幸福', '满足', '喜悦', '愉快', '兴奋', '欣喜', '欢乐', '美好', '感恩', '满意', '畅快', '轻松', '喜欢', '爱'],
+  sadness: ['难过', '伤心', '悲伤', '失落', '沮丧', '痛苦', '心碎', '哭', '眼泪', '孤独', '寂寞', '忧伤', '哀愁', '心酸', '低落', '沉重', '绝望'],
+  anger: ['愤怒', '生气', '烦躁', '暴躁', '恼火', '气愤', '怨恨', '讨厌', '憎恨', '不爽', '抓狂', '不满', '生气', '气', '恼火'],
+  fear: ['害怕', '恐惧', '担忧', '焦虑', '不安', '紧张', '担心', '恐慌', '畏惧', '怕', '忐忑', '惶恐', '忧虑', '焦急', '失眠', '压力'],
+  surprise: ['惊讶', '意外', '没想到', '震惊', '吃惊', '突然', '惊喜', '诧异', '惊奇', '出乎意料', '哇塞', '天哪'],
+  calm: ['平静', '宁静', '安心', '淡定', '平和', '安宁', '恬静', '静谧', '安稳', '沉着', '冷静', '从容', '放松', '舒适', '悠闲', '自在']
+};
+
+var topicLexicon = {
+  '工作事业': ['工作', '公司', '老板', '同事', '加班', '职场', '项目', '任务', '业绩', '晋升', '辞职', '面试', 'offer', '压力', '摸鱼', '上班', '下班', '工资'],
+  '情感关系': ['喜欢', '爱', '恋爱', '分手', '前任', '男朋友', '女朋友', '爱情', '暗恋', '表白', '异地', '吵架', '和好', '思念', '想念', '孤独', '陪伴', '心碎'],
+  '家庭生活': ['家人', '父母', '爸爸', '妈妈', '孩子', '家庭', '回家', '爸妈', '亲人', '兄弟姐妹', '家务', '做饭', '生活', '日常', '温暖', '争吵', '代沟'],
+  '学业考试': ['学习', '考试', '考研', '高考', '作业', '论文', '毕业', '学校', '大学', '高中', '成绩', '挂科', '复习', '备考', '读书', '学生', '上课'],
+  '健康养生': ['身体', '生病', '医院', '医生', '健康', '运动', '减肥', '失眠', '疲惫', '累', '养生', '健身', '跑步', '瑜伽', '饮食', '作息', '疲劳', '调理'],
+  '兴趣爱好': ['电影', '音乐', '游戏', '看书', '旅行', '摄影', '画画', '做饭', '手工', '宠物', '猫', '狗', '追剧', '小说', '动漫', '爬山', '骑行', '咖啡'],
+  '经济财务': ['钱', '工资', '房租', '房贷', '花钱', '省钱', '理财', '投资', '股票', '基金', '贫穷', '富裕', '消费', '奖金', '欠债', '还款'],
+  '人生思考': ['人生', '意义', '迷茫', '未来', '梦想', '目标', '选择', '方向', '困惑', '活着', '存在', '理想', '现实', '成长', '改变', '自我', '思考']
+};
+
+var stopWords = ['的', '了', '是', '在', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '那', '他', '她', '它', '们', '这个', '那个', '什么', '怎么', '为什么', '可以', '还是', '但是', '因为', '所以', '如果', '虽然', '然后', '现在', '今天', '昨天', '明天', '觉得', '感觉', '真的', '其实', '非常', '特别', '比较', '这样', '那样'];
+
+function analyzeText(text) {
+  var result = {
+    emotions: { joy: 0, sadness: 0, anger: 0, fear: 0, surprise: 0, calm: 0 },
+    keywords: [],
+    topics: []
+  };
+
+  Object.keys(emotionLexicon).forEach(function(emotion) {
+    var count = 0;
+    emotionLexicon[emotion].forEach(function(word) {
+      var idx = text.indexOf(word);
+      while(idx !== -1) {
+        count++;
+        idx = text.indexOf(word, idx + 1);
+      }
+    });
+    result.emotions[emotion] = count;
+  });
+
+  var maxEmotion = 0;
+  Object.keys(result.emotions).forEach(function(e) {
+    if(result.emotions[e] > maxEmotion) maxEmotion = result.emotions[e];
+  });
+  if(maxEmotion > 0) {
+    Object.keys(result.emotions).forEach(function(e) {
+      result.emotions[e] = Math.min(1, 0.3 + result.emotions[e] / maxEmotion * 0.7);
+    });
+  } else {
+    result.emotions.calm = 0.6;
+    result.emotions.joy = 0.3;
+    result.emotions.peace = 0.4;
+  }
+
+  var wordFreq = {};
+  
+  Object.keys(topicLexicon).forEach(function(topic) {
+    var count = 0;
+    topicLexicon[topic].forEach(function(word) {
+      var idx = text.indexOf(word);
+      while(idx !== -1) {
+        count++;
+        if(stopWords.indexOf(word) === -1) {
+          wordFreq[word] = (wordFreq[word] || 0) + 2;
+        }
+        idx = text.indexOf(word, idx + 1);
+      }
+    });
+    if(count > 0) {
+      result.topics.push({ name: topic, score: count });
+    }
+  });
+
+  var segs = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ' ').split(/\s+/);
+  segs.forEach(function(w) {
+    if(w.length >= 2 && stopWords.indexOf(w) === -1) {
+      wordFreq[w] = (wordFreq[w] || 0) + 1;
+    }
+  });
+
+  var sortedWords = Object.keys(wordFreq).sort(function(a, b) { return wordFreq[b] - wordFreq[a]; });
+  result.keywords = sortedWords.slice(0, 10).map(function(w) {
+    return { word: w, weight: wordFreq[w] };
+  });
+
+  if(result.keywords.length < 5) {
+    var defaultWords = ['心情', '生活', '思考', '感受', '当下', '时光', '旅程', '心灵', '自我', '成长'];
+    for(var i = 0; i < defaultWords.length && result.keywords.length < 8; i++) {
+      if(!result.keywords.find(function(k) { return k.word === defaultWords[i]; })) {
+        result.keywords.push({ word: defaultWords[i], weight: 1 });
+      }
+    }
+  }
+
+  result.topics.sort(function(a, b) { return b.score - a.score; });
+  if(result.topics.length === 0) {
+    result.topics = [{ name: '人生思考', score: 1 }, { name: '生活日常', score: 0.8 }];
+  }
+  if(result.topics.length < 3) {
+    result.topics.push({ name: '自我探索', score: 0.5 });
+  }
+
+  return result;
+}
+
+// ========== Radar Chart ==========
+function drawRadar(emotions) {
+  var canvas = document.getElementById('radarCanvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  var cx = w / 2, cy = h / 2;
+  var maxR = 75;
+  
+  var labels = ['喜悦', '悲伤', '愤怒', '焦虑', '惊讶', '平静'];
+  var keys = ['joy', 'sadness', 'anger', 'fear', 'surprise', 'calm'];
+  var angles = keys.map(function(_, i) { return -Math.PI / 2 + i * (Math.PI * 2 / 6); });
+
+  ctx.clearRect(0, 0, w, h);
+
+  for(var ring = 1; ring <= 4; ring++) {
+    ctx.beginPath();
+    var r = maxR * ring / 4;
+    for(var i = 0; i < 6; i++) {
+      var x = cx + Math.cos(angles[i]) * r;
+      var y = cy + Math.sin(angles[i]) * r;
+      if(i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(107, 143, 212, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  angles.forEach(function(angle) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
+    ctx.strokeStyle = 'rgba(107, 143, 212, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  ctx.beginPath();
+  keys.forEach(function(key, i) {
+    var val = emotions[key] || 0;
+    var r = maxR * val;
+    var x = cx + Math.cos(angles[i]) * r;
+    var y = cy + Math.sin(angles[i]) * r;
+    if(i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(212, 168, 83, 0.2)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(212, 168, 83, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  keys.forEach(function(key, i) {
+    var val = emotions[key] || 0;
+    var r = maxR * val;
+    var x = cx + Math.cos(angles[i]) * r;
+    var y = cy + Math.sin(angles[i]) * r;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#d4a853';
+    ctx.fill();
+    ctx.shadowColor = 'rgba(212, 168, 83, 0.8)';
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  labels.forEach(function(label, i) {
+    var r = maxR + 18;
+    var x = cx + Math.cos(angles[i]) * r;
+    var y = cy + Math.sin(angles[i]) * r;
+    ctx.fillStyle = 'rgba(150, 180, 220, 0.6)';
+    ctx.font = '200 11px "Noto Sans SC"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, y);
+  });
+}
+
+// ========== Stage 2: Analysis ==========
+function initStage2() {
+  var progressBar = document.getElementById('analysisProgress');
+  var progress = 0;
+  
+  var progressInterval = setInterval(function() {
+    progress += Math.random() * 15 + 5;
+    if(progress >= 100) {
+      progress = 100;
+      clearInterval(progressInterval);
+      showAnalysisResults();
+    }
+    progressBar.style.width = progress + '%';
+  }, 150);
+}
+
+function showAnalysisResults() {
+  if(!analysisResult) return;
+
+  drawRadar(analysisResult.emotions);
+
+  var keywordCloud = document.getElementById('keywordCloud');
+  keywordCloud.innerHTML = '';
+  var maxWeight = Math.max.apply(null, analysisResult.keywords.map(function(k) { return k.weight; }));
+  
+  analysisResult.keywords.forEach(function(kw, i) {
+    var tag = document.createElement('span');
+    tag.className = 'keyword-tag';
+    var ratio = kw.weight / maxWeight;
+    if(ratio > 0.6) tag.classList.add('lv1');
+    else if(ratio > 0.3) tag.classList.add('lv2');
+    else tag.classList.add('lv3');
+    tag.textContent = kw.word;
+    keywordCloud.appendChild(tag);
+    safeTimeout(function() { tag.classList.add('show'); }, i * 120);
+  });
+
+  var topicTags = document.getElementById('topicTags');
+  topicTags.innerHTML = '';
+  analysisResult.topics.slice(0, 4).forEach(function(topic, i) {
+    var tag = document.createElement('span');
+    tag.className = 'topic-tag';
+    if(i === 0) tag.classList.add('primary');
+    tag.textContent = topic.name;
+    topicTags.appendChild(tag);
+    safeTimeout(function() { tag.classList.add('show'); }, 300 + i * 200);
+  });
+
+  safeTimeout(function() {
+    document.getElementById('toOrbitBtn').classList.add('show');
+  }, 1500);
+  
+  var aiAnalyzeBtn = document.getElementById('aiAnalyzeBtn');
+  var aiAnalysisContent = document.getElementById('aiAnalysisContent');
+  if(aiAnalyzeBtn) {
+    if(isAiAvailable() && aiConfig.analysisEnabled) {
+      aiAnalyzeBtn.style.display = 'flex';
+      aiAnalyzeBtn.disabled = false;
+    } else {
+      aiAnalyzeBtn.style.display = 'none';
+    }
+  }
+  if(aiAnalysisContent) {
+    aiAnalysisContent.innerHTML = '<div class="ai-analysis-placeholder">点击右上角按钮，让 AI 为你生成深度心理画像...</div>';
+  }
+}
+
+document.getElementById('toOrbitBtn').addEventListener('click', function() {
+  switchStage(2);
+});
+
+// ========== Stage 3: Orbit Interaction ==========
+var astroContainer = document.getElementById('astroContainer');
+var orbits = document.querySelectorAll('.orbit');
+var isDragging = false;
+var startAngle = 0;
+var currentRotation = [0, 0, 0, 0];
+var vibrationTimeout = null;
+var hasInteracted = false;
+
+function getAngle(x, y) {
+  var rect = astroContainer.getBoundingClientRect();
+  var cx = rect.left + rect.width / 2;
+  var cy = rect.top + rect.height / 2;
+  return Math.atan2(y - cy, x - cx);
+}
+
+function initStage3() {
+  hasInteracted = false;
+  currentRotation = [0, 0, 0, 0];
+  orbits.forEach(function(o, i) {
+    if(i > 0) o.style.transform = 'rotate(0rad)';
+  });
+  
+  astroContainer.addEventListener('mousedown', onStage3MouseDown);
+  document.addEventListener('mousemove', onStage3MouseMove);
+  document.addEventListener('mouseup', onStage3MouseUp);
+  astroContainer.addEventListener('touchstart', onStage3TouchStart);
+  document.addEventListener('touchmove', onStage3TouchMove);
+  document.addEventListener('touchend', onStage3TouchEnd);
+}
+
+function cleanupStage3() {
+  astroContainer.removeEventListener('mousedown', onStage3MouseDown);
+  document.removeEventListener('mousemove', onStage3MouseMove);
+  document.removeEventListener('mouseup', onStage3MouseUp);
+  astroContainer.removeEventListener('touchstart', onStage3TouchStart);
+  document.removeEventListener('touchmove', onStage3TouchMove);
+  document.removeEventListener('touchend', onStage3TouchEnd);
+  isDragging = false;
+  astroContainer.classList.remove('dragging');
+  if(vibrationTimeout) { clearTimeout(vibrationTimeout); vibrationTimeout = null; }
+}
+
+function onStage3MouseDown(e) {
+  isDragging = true;
+  startAngle = getAngle(e.clientX, e.clientY);
+  astroContainer.classList.add('dragging');
+  hasInteracted = true;
+  if(vibrationTimeout) { clearTimeout(vibrationTimeout); vibrationTimeout = null; }
+  vibrationTimeout = safeTimeout(function() {
+    if(isDragging) triggerResonance();
+  }, 3000);
+}
+
+function onStage3MouseMove(e) {
+  if(isDragging) {
+    var ca = getAngle(e.clientX, e.clientY);
+    var delta = ca - startAngle;
+    orbits.forEach(function(o, i) {
+      if(i > 0) {
+        currentRotation[i - 1] += delta * (4 - i) * 0.5;
+        o.style.transform = 'rotate(' + currentRotation[i - 1] + 'rad)';
+      }
+    });
+    startAngle = ca;
+  }
+}
+
+function onStage3MouseUp() {
+  isDragging = false;
+  astroContainer.classList.remove('dragging');
+  if(vibrationTimeout) { clearTimeout(vibrationTimeout); vibrationTimeout = null; }
+  if(hasInteracted && !isDragging) triggerResonance();
+}
+
+function onStage3TouchStart(e) {
+  e.preventDefault();
+  if(e.touches.length === 1) {
+    var t = e.touches[0];
+    isDragging = true;
+    startAngle = getAngle(t.clientX, t.clientY);
+    astroContainer.classList.add('dragging');
+    hasInteracted = true;
+    if(vibrationTimeout) { clearTimeout(vibrationTimeout); vibrationTimeout = null; }
+    vibrationTimeout = safeTimeout(function() { if(isDragging) triggerResonance(); }, 3000);
+  }
+}
+
+function onStage3TouchMove(e) {
+  if(isDragging && e.touches.length === 1) {
+    e.preventDefault();
+    var t = e.touches[0];
+    var ca = getAngle(t.clientX, t.clientY);
+    var delta = ca - startAngle;
+    orbits.forEach(function(o, i) {
+      if(i > 0) {
+        currentRotation[i - 1] += delta * (4 - i) * 0.5;
+        o.style.transform = 'rotate(' + currentRotation[i - 1] + 'rad)';
+      }
+    });
+    startAngle = ca;
+  }
+}
+
+function onStage3TouchEnd() {
+  isDragging = false;
+  astroContainer.classList.remove('dragging');
+  if(vibrationTimeout) { clearTimeout(vibrationTimeout); vibrationTimeout = null; }
+  if(hasInteracted && !isDragging) triggerResonance();
+}
+
+function triggerResonance() {
+  astroContainer.classList.add('vibrating');
+  safeTimeout(function() {
+    astroContainer.classList.remove('vibrating');
+    cleanupStage3();
+    switchStage(3);
+  }, 1500);
+}
+
+// ========== Stage 4: Resonance Text ==========
+var resonanceText = document.getElementById('resonanceText');
+
+function typeWriter(el, text, index, callback) {
+  if(index < text.length) {
+    el.textContent += text.charAt(index);
+    safeTimeout(function() { typeWriter(el, text, index + 1, callback); }, 70);
+  } else if(callback) { callback(); }
+}
+
+function initStage4() {
+  var bestMatch = findBestMatch(analysisResult);
+  matchedUser = bestMatch;
+  
+  resonanceText.textContent = '';
+  resonanceText.style.opacity = '1';
+  
+  var messages = [
+    '正在扫描星轨数据库...',
+    '分析情感共振频率...',
+    '计算差异化匹配度...',
+    '',
+    '匹配成功！',
+    bestMatch.persona.name,
+    bestMatch.persona.location
+  ];
+  
+  var msgIndex = 0;
+  function nextMsg() {
+    if(msgIndex < messages.length) {
+      if(messages[msgIndex] === '') {
+        resonanceText.innerHTML += '<br><br>';
+        msgIndex++;
+        safeTimeout(nextMsg, 400);
+      } else {
+        var span = document.createElement('div');
+        resonanceText.appendChild(span);
+        typeWriter(span, messages[msgIndex], 0, function() {
+          msgIndex++;
+          safeTimeout(nextMsg, 500);
+        });
+      }
+    } else {
+      safeTimeout(function() { switchStage(4); }, 1500);
+    }
+  }
+  safeTimeout(nextMsg, 300);
+}
+
+// ========== Matching Engine & User Personas ==========
+var userPersonas = [
+  {
+    id: 1, name: '极光守望者', avatar: '🌌', location: '冰岛 · 雷克雅未克',
+    lifestyle: '独居', pace: '慢节奏',
+    traits: ['内向', '敏感', '理想主义'],
+    diary: '今夜的雷克雅未克没有极光，但海浪拍打礁石的声音比任何光都更清晰。我在灯塔里守望着这片黑色的海，想起你写下的文字。其实星辰一直在那里，只是云层太厚。当你愿意抬头时，它们会为你闪烁。',
+    tasks: ['像灯塔守望者一样静坐5分钟', '走到窗边观察天空的颜色变化', '写下一件今天让你微笑的小事'],
+    emotionProfile: { joy: 0.4, sadness: 0.5, anger: 0.1, fear: 0.3, surprise: 0.4, calm: 0.8 },
+    topics: ['人生思考', '兴趣爱好', '健康养生']
+  },
+  {
+    id: 2, name: '雨巷旅人', avatar: '☔', location: '挪威 · 卑尔根',
+    lifestyle: '独居', pace: '慢节奏',
+    traits: ['感性', '怀旧', '有同理心'],
+    diary: '卑尔根的雨已经下了三天，但我知道云层之上永远有阳光。雨雾中的木屋透出温暖的灯火，就像你心中未曾熄灭的希望。孤独其实并不可怕，它只是让你更清晰地听见自己内心的声音。',
+    tasks: ['泡一杯热茶静静听雨', '给远方的朋友发一条问候', '写下三个你感谢的人'],
+    emotionProfile: { joy: 0.3, sadness: 0.8, anger: 0.2, fear: 0.5, surprise: 0.2, calm: 0.5 },
+    topics: ['情感关系', '家庭生活', '人生思考']
+  },
+  {
+    id: 3, name: '山顶追风人', avatar: '🏔️', location: '新西兰 · 皇后镇',
+    lifestyle: '游牧', pace: '中节奏',
+    traits: ['自由', '冒险', '乐观'],
+    diary: '站在皇后镇的山顶，脚下是瓦卡蒂普湖湛蓝的水面。远方的雪山在云雾中若隐若现，就像你未来的道路。迷茫是暂时的，就像晨雾终将散去。深呼吸，让大自然的力量指引你前行。',
+    tasks: ['闭上眼睛做三次深呼吸', '列出三件你喜欢做的事', '给自己写一句鼓励的话'],
+    emotionProfile: { joy: 0.8, sadness: 0.2, anger: 0.1, fear: 0.3, surprise: 0.6, calm: 0.6 },
+    topics: ['人生思考', '兴趣爱好', '工作事业']
+  },
+  {
+    id: 4, name: '枯山水僧侣', avatar: '🍵', location: '日本 · 京都',
+    lifestyle: '规律', pace: '慢节奏',
+    traits: ['沉稳', '内敛', '有耐心'],
+    diary: '枯山水庭院里的白砂如水般流动，青苔在石头上静静生长。在京都的古寺中，时间仿佛放慢了脚步。你不需要一直奔跑，停下来休息并不是放弃。让身心回归平静，才能重新出发。',
+    tasks: ['找一处安静的角落闭目养神', '听一首舒缓的音乐', '泡个热水澡放松身心'],
+    emotionProfile: { joy: 0.5, sadness: 0.2, anger: 0.1, fear: 0.2, surprise: 0.1, calm: 0.95 },
+    topics: ['健康养生', '家庭生活', '人生思考']
+  },
+  {
+    id: 5, name: '雪峰净化者', avatar: '❄️', location: '瑞士 · 采尔马特',
+    lifestyle: '运动', pace: '快节奏',
+    traits: ['坚韧', '理性', '自律'],
+    diary: '马特洪峰的冰雪在阳光下闪耀着蓝色的光芒，空气纯净得仿佛能洗去一切尘埃。愤怒是一团火，它会灼伤自己也伤害他人。深呼吸，想象自己站在雪山之巅，让清风带走所有的火气。',
+    tasks: ['做10次深呼吸慢慢呼气', '去户外走一圈感受自然', '把烦恼写在纸上然后撕掉'],
+    emotionProfile: { joy: 0.6, sadness: 0.1, anger: 0.7, fear: 0.3, surprise: 0.4, calm: 0.7 },
+    topics: ['健康养生', '工作事业', '经济财务']
+  },
+  {
+    id: 6, name: '巨石守望者', avatar: '🌅', location: '澳大利亚 · 乌鲁鲁',
+    lifestyle: '游牧', pace: '慢节奏',
+    traits: ['神秘', '有深度', '爱探索'],
+    diary: '乌鲁鲁巨石在夕阳下变幻着颜色，从金色到橙红再到深紫。这片土地见证了亿万年的变迁，而你的烦恼只是时间长河中的一瞬。生命本就是一场旅程，每一个当下都有它独特的意义。',
+    tasks: ['观察身边三件从未注意的事物', '尝试一种从未吃过的食物', '写下今天觉得有趣的一件事'],
+    emotionProfile: { joy: 0.5, sadness: 0.4, anger: 0.2, fear: 0.3, surprise: 0.7, calm: 0.6 },
+    topics: ['人生思考', '兴趣爱好', '旅行探索']
+  },
+  {
+    id: 7, name: '沙漠观星人', avatar: '⭐', location: '智利 · 阿塔卡马',
+    lifestyle: '独居', pace: '慢节奏',
+    traits: ['孤独', '深刻', '有哲思'],
+    diary: '阿塔卡马沙漠的星空是世界上最璀璨的，银河横跨天际，繁星触手可及。在这片无垠的宇宙面前，所有的痛苦都变得渺小。请相信，即使在最深的黑暗中，也总有星光为你指引方向。',
+    tasks: ['晚上抬头看看星空', '回想一件让你感到希望的事', '告诉自己「明天会更好」'],
+    emotionProfile: { joy: 0.3, sadness: 0.7, anger: 0.2, fear: 0.8, surprise: 0.5, calm: 0.4 },
+    topics: ['人生思考', '学业考试', '情感关系']
+  },
+  {
+    id: 8, name: '湖泊漫步者', avatar: '🏞️', location: '加拿大 · 班夫',
+    lifestyle: '户外', pace: '中节奏',
+    traits: ['活力', '阳光', '有冲劲'],
+    diary: '班夫的湖泊倒映着雪山，森林在微风中低语。生命中的每一次挑战都是成长的机会，就像攀登高山需要勇气。相信自己的能力，你比想象中更强大。',
+    tasks: ['列出三个你已经克服的困难', '告诉自己「我能行」', '做一些简单的伸展运动'],
+    emotionProfile: { joy: 0.9, sadness: 0.1, anger: 0.3, fear: 0.4, surprise: 0.5, calm: 0.5 },
+    topics: ['工作事业', '健康养生', '兴趣爱好']
+  },
+  {
+    id: 9, name: '都市夜归人', avatar: '🌃', location: '中国 · 上海',
+    lifestyle: '忙碌', pace: '快节奏',
+    traits: ['努力', '上进', '有点累'],
+    diary: '上海的霓虹亮了一整夜，写字楼的灯光像永不熄灭的星。我知道你也在这座城市里努力着，有时候会觉得累，有时候会迷茫。但请相信，每一个深夜的坚持，都在为你照亮未来的路。',
+    tasks: ['给自己点一份喜欢的夜宵', '睡前放下手机冥想10分钟', '周末计划一次小小的逃离'],
+    emotionProfile: { joy: 0.4, sadness: 0.6, anger: 0.4, fear: 0.7, surprise: 0.3, calm: 0.2 },
+    topics: ['工作事业', '经济财务', '人生思考']
+  },
+  {
+    id: 10, name: '山城少年', avatar: '🏘️', location: '中国 · 重庆',
+    lifestyle: '热闹', pace: '中节奏',
+    traits: ['直率', '热情', '爱吃辣'],
+    diary: '重庆的轻轨又从楼里穿过去了，火锅的香气飘满了整条街。生活嘛，就像这山城的路，上上下下的，但总是有新的风景在等你。没得啥子坎是过不去的，整一碗小面，又是新的一天。',
+    tasks: ['去吃一顿好吃的犒劳自己', '给家人打个电话唠唠嗑', '出门散散步看看烟火气'],
+    emotionProfile: { joy: 0.7, sadness: 0.2, anger: 0.5, fear: 0.2, surprise: 0.5, calm: 0.4 },
+    topics: ['家庭生活', '工作事业', '兴趣爱好']
+  },
+  {
+    id: 11, name: '珊瑚岛居民', avatar: '🌴', location: '马尔代夫 · 马累',
+    lifestyle: '度假', pace: '慢节奏',
+    traits: ['温暖', '友善', '会享受'],
+    diary: '马尔代夫的海水清澈见底，珊瑚在阳光下闪烁着五彩斑斓的光芒。感谢你愿意分享这份心情，让我也感受到了你的存在。请记住当下的感觉，让它成为你前进的动力。',
+    tasks: ['写下今天让你开心的三件事', '给帮助过你的人发个感谢', '做一个深呼吸感受当下'],
+    emotionProfile: { joy: 0.95, sadness: 0.05, anger: 0.05, fear: 0.1, surprise: 0.6, calm: 0.8 },
+    topics: ['兴趣爱好', '家庭生活', '健康养生']
+  },
+  {
+    id: 12, name: '恒河渡者', avatar: '🕉️', location: '印度 · 瓦拉纳西',
+    lifestyle: '灵修', pace: '慢节奏',
+    traits: ['宽容', '慈悲', '有智慧'],
+    diary: '恒河的水流淌了千年，带走了无数人的悲伤与悔恨。在瓦拉纳西的晨曦中，一切都可以重新开始。过去的已经过去，重要的是现在和未来。原谅自己，才能真正放下。',
+    tasks: ['写下一件让你释怀的事', '对自己说一声「没关系」', '做一件让自己开心的小事'],
+    emotionProfile: { joy: 0.6, sadness: 0.6, anger: 0.2, fear: 0.5, surprise: 0.3, calm: 0.8 },
+    topics: ['人生思考', '健康养生', '情感关系']
+  }
+];
+
+function calculateMatchScore(analysis, persona) {
+  var score = 0;
+  var emotionDiff = 0;
+  var emotions = ['joy', 'sadness', 'anger', 'fear', 'surprise', 'calm'];
+  emotions.forEach(function(e) {
+    emotionDiff += Math.abs(analysis.emotions[e] - persona.emotionProfile[e]);
+  });
+  emotionDiff = emotionDiff / emotions.length;
+  var emotionSim = 1 - emotionDiff;
+  score += emotionSim * 0.35;
+
+  var topicMatch = 0;
+  var totalTopics = Math.max(analysis.topics.length, 1);
+  analysis.topics.forEach(function(t) {
+    if(persona.topics.indexOf(t.name) !== -1) topicMatch++;
+  });
+  score += (topicMatch / totalTopics) * 0.3;
+
+  var maxDiff = 0;
+  emotions.forEach(function(e) {
+    var diff = Math.abs(analysis.emotions[e] - persona.emotionProfile[e]);
+    if(diff > maxDiff) maxDiff = diff;
+  });
+  score += maxDiff * 0.25;
+
+  var randomFactor = Math.random() * 0.15;
+  score += randomFactor;
+
+  return {
+    score: Math.min(97, Math.max(38, Math.round(score * 100))),
+    emotionSimilarity: Math.round(emotionSim * 100),
+    topicMatch: Math.round((topicMatch / totalTopics) * 100),
+    complementarity: Math.round(maxDiff * 100)
+  };
+}
+
+function findBestMatch(analysis) {
+  var bestMatch = null;
+  var highestScore = 0;
+  userPersonas.forEach(function(persona) {
+    var result = calculateMatchScore(analysis, persona);
+    if(result.score > highestScore) {
+      highestScore = result.score;
+      bestMatch = { persona: persona, matchResult: result };
+    }
+  });
+  return bestMatch;
+}
+
+function findSimilarUsers(analysis, excludeId) {
+  var results = [];
+  userPersonas.forEach(function(persona) {
+    if(persona.id === excludeId) return;
+    var result = calculateMatchScore(analysis, persona);
+    results.push({ persona: persona, matchResult: result });
+  });
+  results.sort(function(a, b) { return b.matchResult.score - a.matchResult.score; });
+  return results.slice(0, 6);
+}
+
+// ========== Stage 5: Match Result ==========
+var matchScoreCanvas = document.getElementById('matchScoreCanvas');
+var matchScoreValue = document.getElementById('matchScoreValue');
+var matchName = document.getElementById('matchName');
+var matchLocation = document.getElementById('matchLocation');
+var matchDiary = document.getElementById('matchDiary');
+var matchIllust = document.getElementById('matchIllust');
+var matchTags = document.getElementById('matchTags');
+var matchTasksList = document.getElementById('matchTasksList');
+var viewConnectionsBtn = document.getElementById('viewConnectionsBtn');
+var matchScoreAnimating = false;
+
+function animateScore(targetScore) {
+  if(matchScoreAnimating) return;
+  matchScoreAnimating = true;
+  var current = 0;
+  var ctx = matchScoreCanvas.getContext('2d');
+  var w = matchScoreCanvas.width;
+  var h = matchScoreCanvas.height;
+  var cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 15;
+  
+  function draw(score) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 12;
+    ctx.stroke();
+    
+    var angle = -Math.PI / 2 + (score / 100) * Math.PI * 2;
+    var grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#ffd700');
+    grad.addColorStop(0.5, '#4ecdc4');
+    grad.addColorStop(1, '#a855f7');
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, angle);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 2, -Math.PI / 2, angle);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  
+  function step() {
+    if(current < targetScore) {
+      current += Math.max(1, Math.ceil((targetScore - current) / 20));
+      if(current > targetScore) current = targetScore;
+      draw(current);
+      matchScoreValue.textContent = current + '%';
+      safeTimeout(step, 30);
+    } else {
+      matchScoreAnimating = false;
+    }
+  }
+  step();
+}
+
+function generateIllustrationSvg(persona) {
+  var scenes = {
+    '冰岛 · 雷克雅未克': {
+      bg: 'linear-gradient(180deg, #0a1628 0%, #1a365d 50%, #2d3748 100%)',
+      elements: ['🌊', '🗼', '🌌', '❄️']
+    },
+    '挪威 · 卑尔根': {
+      bg: 'linear-gradient(180deg, #1a365d 0%, #2c5282 50%, #4a5568 100%)',
+      elements: ['🏠', '🌧️', '☔', '🌲']
+    },
+    '新西兰 · 皇后镇': {
+      bg: 'linear-gradient(180deg, #1e3a5f 0%, #2d6a4f 50%, #40916c 100%)',
+      elements: ['🏔️', '🏞️', '🚵', '☀️']
+    },
+    '日本 · 京都': {
+      bg: 'linear-gradient(180deg, #2d2d34 0%, #4a3728 50%, #5c4033 100%)',
+      elements: ['🏯', '🍵', '🌸', '🎋']
+    },
+    '瑞士 · 采尔马特': {
+      bg: 'linear-gradient(180deg, #1e3a5f 0%, #74b9ff 50%, #dfe6e9 100%)',
+      elements: ['🏔️', '❄️', '⛷️', '🌨️']
+    },
+    '澳大利亚 · 乌鲁鲁': {
+      bg: 'linear-gradient(180deg, #ff6b35 0%, #f7931e 50%, #8b4513 100%)',
+      elements: ['🪨', '🌅', '🦘', '🏜️']
+    },
+    '智利 · 阿塔卡马': {
+      bg: 'linear-gradient(180deg, #0a0a23 0%, #1a1a3e 50%, #2d1b4e 100%)',
+      elements: ['⭐', '🌌', '🔭', '🏜️']
+    },
+    '加拿大 · 班夫': {
+      bg: 'linear-gradient(180deg, #1e3a5f 0%, #2d6a4f 50%, #52b788 100%)',
+      elements: ['🏞️', '🌲', '🦌', '🏔️']
+    },
+    '中国 · 上海': {
+      bg: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+      elements: ['🌃', '🏙️', '🌉', '✨']
+    },
+    '中国 · 重庆': {
+      bg: 'linear-gradient(180deg, #2d1b1b 0%, #4a2c2c 50%, #6b3a3a 100%)',
+      elements: ['🏘️', '🌶️', '🚝', '🌃']
+    },
+    '马尔代夫 · 马累': {
+      bg: 'linear-gradient(180deg, #0077b6 0%, #00b4d8 50%, #90e0ef 100%)',
+      elements: ['🌴', '🌊', '🐠', '☀️']
+    },
+    '印度 · 瓦拉纳西': {
+      bg: 'linear-gradient(180deg, #ff6b35 0%, #e85d04 50%, #dc2f02 100%)',
+      elements: ['🛕', '🌅', '🚣', '🕉️']
+    }
+  };
+  
+  var scene = scenes[persona.location] || scenes['冰岛 · 雷克雅未克'];
+  var elements = scene.elements;
+  var positions = [
+    { top: '15%', left: '20%', size: 48 },
+    { top: '45%', left: '60%', size: 56 },
+    { top: '65%', left: '25%', size: 44 },
+    { top: '30%', left: '70%', size: 40 }
+  ];
+  
+  var html = '<div class="match-illust-inner" style="background: ' + scene.bg + '">';
+  elements.forEach(function(emoji, i) {
+    var pos = positions[i];
+    html += '<span class="illust-emoji" style="top:' + pos.top + ';left:' + pos.left + ';font-size:' + pos.size + 'px;animation-delay:' + (i * 0.3) + 's">' + emoji + '</span>';
+  });
+  html += '<div class="illust-stars"></div>';
+  html += '</div>';
+  return html;
+}
+
+function getResonanceLevel(score) {
+  if(score >= 90) return { level: '跨越光年的共鸣', desc: '你们的灵魂频率惊人地相似', icon: '✨' };
+  if(score >= 80) return { level: '灵魂深处的呼应', desc: '在宇宙深处，你们彼此听见', icon: '💫' };
+  if(score >= 70) return { level: '星空中的同道人', desc: '沿着相似的轨道在前行', icon: '🌠' };
+  if(score >= 60) return { level: '微妙的羁绊', desc: '命运的丝线若有若无地相连', icon: '🌌' };
+  return { level: '偶然的交错', desc: '在人海中擦肩而过的缘分', icon: '☄️' };
+}
+
+function initStage5() {
+  var match = matchedUser;
+  var persona = match.persona;
+  var result = match.matchResult;
+  var resonance = getResonanceLevel(result.score);
+  
+  document.getElementById('matchAvatar').textContent = persona.avatar;
+  document.getElementById('matchName').textContent = persona.name;
+  document.getElementById('matchLocation').textContent = persona.location;
+  document.getElementById('diaryText').textContent = persona.diary;
+  
+  var illustContainer = document.getElementById('illustrationContainer');
+  if(illustContainer) {
+    illustContainer.innerHTML = generateIllustrationSvg(persona);
+  }
+  
+  var matchTagsEl = document.getElementById('matchTags');
+  if(matchTagsEl) {
+    matchTagsEl.innerHTML = '';
+    var tagData = [
+      { label: '情感相似 ' + result.emotionSimilarity + '%', type: 'similar' },
+      { label: '主题契合 ' + result.topicMatch + '%', type: 'similar' },
+      { label: '互补差异 ' + result.complementarity + '%', type: 'complement' },
+      { label: persona.lifestyle, type: 'lifestyle' },
+      { label: persona.pace, type: 'lifestyle' }
+    ];
+    tagData.forEach(function(tag) {
+      var span = document.createElement('span');
+      span.className = 'match-tag match-tag-' + tag.type;
+      span.textContent = tag.label;
+      matchTagsEl.appendChild(span);
+    });
+  }
+  
+  document.getElementById('task1').textContent = persona.tasks[0] || '';
+  document.getElementById('task2').textContent = persona.tasks[1] || '';
+  document.getElementById('task3').textContent = persona.tasks[2] || '';
+  
+  var scoreRing = document.getElementById('scoreRing');
+  var scoreValue = document.getElementById('scoreValue');
+  var matchScoreLabel = document.querySelector('.match-score-label');
+  var circumference = 314;
+  var offset = circumference - (result.score / 100) * circumference;
+  
+  if(scoreValue) {
+    scoreValue.style.fontSize = '1.8rem';
+    scoreValue.innerHTML = resonance.icon + '<br><span style="font-size:0.65rem;font-weight:300;letter-spacing:0.1em;line-height:1.4;">' + resonance.level + '</span>';
+  }
+  if(matchScoreLabel) {
+    matchScoreLabel.textContent = resonance.desc;
+  }
+  
+  safeTimeout(function() {
+    if(scoreRing) {
+      scoreRing.style.transition = 'stroke-dashoffset 1.5s ease';
+      scoreRing.style.strokeDashoffset = offset;
+    }
+  }, 500);
+  
+  var shiftCard = document.getElementById('shiftCard');
+  if(shiftCard) {
+    shiftCard.addEventListener('click', function() {
+      shiftCard.classList.toggle('flipped');
+    });
+  }
+}
+
+// ========== Stage 6: User Connections ==========
+var userConnectionsList = document.getElementById('userConnectionsList');
+var goHomeBtn = document.getElementById('goHomeBtn');
+var sendLetterBtn = document.getElementById('sendLetterBtn');
+var letterModal = document.getElementById('letterModal');
+var letterText = document.getElementById('letterText');
+var letterSendBtn = document.getElementById('letterSendBtn');
+var letterCancelBtn = document.getElementById('letterCancelBtn');
+var letterSuccess = document.getElementById('letterSuccess');
+var selectedConnectionId = null;
+
+function initStage6() {
+  var similarUsers = findSimilarUsers(analysisResult, matchedUser.persona.id);
+  var usersTrack = document.getElementById('usersTrack');
+  if(!usersTrack) return;
+  
+  usersTrack.innerHTML = '';
+  
+  similarUsers.forEach(function(user, index) {
+    var card = document.createElement('div');
+    card.className = 'connection-card';
+    card.style.animationDelay = (index * 0.1) + 's';
+    
+    var scoreColor = user.matchResult.score >= 75 ? '#ffd700' : user.matchResult.score >= 60 ? '#4ecdc4' : '#a855f7';
+    
+    card.innerHTML = `
+      <div class="connection-avatar">${user.persona.avatar}</div>
+      <div class="connection-info">
+        <div class="connection-name">${user.persona.name}</div>
+        <div class="connection-location">${user.persona.location}</div>
+        <div class="connection-score" style="color:${scoreColor}">共鸣度 ${user.matchResult.score}%</div>
+      </div>
+      <div class="connection-actions">
+        <button class="connect-btn" data-id="${user.persona.id}">连接</button>
+      </div>
+    `;
+    
+    usersTrack.appendChild(card);
+  });
+  
+  document.querySelectorAll('.connect-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      selectedConnectionId = parseInt(this.getAttribute('data-id'));
+      var letterModal = document.getElementById('letterModal');
+      if(letterModal) letterModal.style.display = 'flex';
+    });
+  });
+}
+
+function closeLetterModal() {
+  var letterModal = document.getElementById('letterModal');
+  var letterText = document.getElementById('letterText');
+  var letterSuccess = document.getElementById('letterSuccess');
+  var letterSendBtn = document.getElementById('letterSendBtn');
+  if(letterModal) letterModal.style.display = 'none';
+  if(letterText) {
+    letterText.value = '';
+    letterText.style.display = 'block';
+  }
+  if(letterSuccess) letterSuccess.style.display = 'none';
+  if(letterSendBtn) letterSendBtn.style.display = 'block';
+}
+
+function sendLetter() {
+  var letterText = document.getElementById('letterText');
+  var letterSuccess = document.getElementById('letterSuccess');
+  var letterSendBtn = document.getElementById('letterSendBtn');
+  
+  var text = letterText ? letterText.value.trim() : '';
+  if(!text) return;
+  
+  if(letterText) letterText.style.display = 'none';
+  if(letterSendBtn) letterSendBtn.style.display = 'none';
+  if(letterSuccess) letterSuccess.style.display = 'block';
+  
+  var connectionBtn = document.querySelector('.connect-btn[data-id="' + selectedConnectionId + '"]');
+  if(connectionBtn) {
+    connectionBtn.textContent = '已发送';
+    connectionBtn.disabled = true;
+    connectionBtn.style.opacity = '0.6';
+  }
+  
+  safeTimeout(function() {
+    closeLetterModal();
+  }, 2000);
+}
+
+// ========== Back to Home ==========
+function goBackHome() {
+  analysisResult = null;
+  matchedUser = null;
+  
+  var cosmicInput = document.getElementById('cosmicInput');
+  var wordCount = document.getElementById('wordCount');
+  if(cosmicInput) cosmicInput.value = '';
+  if(wordCount) wordCount.textContent = '0 字';
+  
+  var scoreRing = document.getElementById('scoreRing');
+  if(scoreRing) {
+    scoreRing.style.transition = 'none';
+    scoreRing.style.strokeDashoffset = '314';
+  }
+  
+  var scoreValue = document.getElementById('scoreValue');
+  if(scoreValue) scoreValue.textContent = '0%';
+  
+  switchStage(0);
+  
+  safeTimeout(function() {
+    if(cosmicInput) cosmicInput.focus();
+  }, 500);
+}
+
+function bindExtraEvents() {
+  var toConnectBtn = document.getElementById('toConnectBtn');
+  if(toConnectBtn) {
+    toConnectBtn.addEventListener('click', function() {
+      switchStage(5);
+    });
+  }
+  
+  var backHome = document.getElementById('backHome');
+  if(backHome) {
+    backHome.addEventListener('click', goBackHome);
+  }
+  
+  var backHome2 = document.getElementById('backHome2');
+  if(backHome2) {
+    backHome2.addEventListener('click', goBackHome);
+  }
+  
+  var letterCancelBtn = document.getElementById('letterCancelBtn');
+  if(letterCancelBtn) {
+    letterCancelBtn.addEventListener('click', closeLetterModal);
+  }
+  
+  var letterSendBtn = document.getElementById('letterSendBtn');
+  if(letterSendBtn) {
+    letterSendBtn.addEventListener('click', sendLetter);
+  }
+  
+  var letterModal = document.getElementById('letterModal');
+  if(letterModal) {
+    letterModal.addEventListener('click', function(e) {
+      if(e.target === letterModal) closeLetterModal();
+    });
+  }
+  
+  // Settings modal
+  var settingsBtn = document.getElementById('settingsBtn');
+  var settingsModal = document.getElementById('settingsModal');
+  var modalClose = document.getElementById('modalClose');
+  var modalOverlay = document.getElementById('modalOverlay');
+  var saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  var aiProvider = document.getElementById('aiProvider');
+  var customEndpointSection = document.getElementById('customEndpointSection');
+  var aiEndpoint = document.getElementById('aiEndpoint');
+  var aiApiKey = document.getElementById('aiApiKey');
+  var aiModel = document.getElementById('aiModel');
+  var aiExpandToggle = document.getElementById('aiExpandToggle');
+  var aiAnalysisToggle = document.getElementById('aiAnalysisToggle');
+  var testConnBtn = document.getElementById('testConnBtn');
+  var testResult = document.getElementById('testResult');
+  
+  function openSettings() {
+    if(settingsModal) settingsModal.classList.add('active');
+    if(aiProvider) aiProvider.value = aiConfig.provider;
+    if(customEndpointSection) {
+      customEndpointSection.style.display = aiConfig.provider === 'custom' ? 'block' : 'none';
+    }
+    if(aiEndpoint) aiEndpoint.value = aiConfig.endpoint;
+    if(aiApiKey) aiApiKey.value = aiConfig.apiKey;
+    if(aiModel) aiModel.value = aiConfig.model;
+    if(aiExpandToggle) aiExpandToggle.checked = aiConfig.expandEnabled;
+    if(aiAnalysisToggle) aiAnalysisToggle.checked = aiConfig.analysisEnabled;
+    if(testResult) testResult.textContent = '';
+  }
+  
+  function closeSettings() {
+    if(settingsModal) settingsModal.classList.remove('active');
+  }
+  
+  if(settingsBtn) settingsBtn.addEventListener('click', openSettings);
+  if(modalClose) modalClose.addEventListener('click', closeSettings);
+  if(modalOverlay) modalOverlay.addEventListener('click', closeSettings);
+  
+  if(aiProvider) {
+    aiProvider.addEventListener('change', function() {
+      var provider = aiProvider.value;
+      if(customEndpointSection) {
+        customEndpointSection.style.display = provider === 'custom' ? 'block' : 'none';
+      }
+      if(provider !== 'custom') {
+        var preset = AI_PROVIDERS[provider];
+        if(aiModel && !aiConfig.model) {
+          aiModel.value = preset.model;
+        }
+      }
+    });
+  }
+  
+  if(testConnBtn) {
+    testConnBtn.addEventListener('click', async function() {
+      testConnBtn.disabled = true;
+      testResult.textContent = '测试中...';
+      testResult.className = 'test-result';
+      
+      var tempProvider = aiProvider.value;
+      var tempEndpoint = tempProvider === 'custom' ? aiEndpoint.value : AI_PROVIDERS[tempProvider].endpoint;
+      var tempKey = aiApiKey.value;
+      var tempModel = aiModel.value || (AI_PROVIDERS[tempProvider]?.model || '');
+      
+      var originalProvider = aiConfig.provider;
+      var originalEndpoint = aiConfig.endpoint;
+      var originalKey = aiConfig.apiKey;
+      var originalModel = aiConfig.model;
+      
+      aiConfig.provider = tempProvider;
+      aiConfig.endpoint = tempEndpoint;
+      aiConfig.apiKey = tempKey;
+      aiConfig.model = tempModel;
+      
+      try {
+        var ok = await AI.testConnection();
+        if(ok) {
+          testResult.textContent = '✓ 连接成功';
+          testResult.className = 'test-result success';
+          aiConfig.verified = true;
+        } else {
+          testResult.textContent = '✗ 连接失败';
+          testResult.className = 'test-result error';
+          aiConfig.verified = false;
+        }
+      } catch(e) {
+        testResult.textContent = '✗ ' + e.message;
+        testResult.className = 'test-result error';
+        aiConfig.verified = false;
+      } finally {
+        aiConfig.provider = originalProvider;
+        aiConfig.endpoint = originalEndpoint;
+        aiConfig.apiKey = originalKey;
+        aiConfig.model = originalModel;
+        testConnBtn.disabled = false;
+      }
+    });
+  }
+  
+  if(saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', function() {
+      aiConfig.provider = aiProvider.value;
+      aiConfig.endpoint = aiEndpoint.value;
+      aiConfig.apiKey = aiApiKey.value;
+      aiConfig.model = aiModel.value;
+      aiConfig.expandEnabled = aiExpandToggle.checked;
+      aiConfig.analysisEnabled = aiAnalysisToggle.checked;
+      saveAiConfig();
+      updateAiExpandBtn();
+      closeSettings();
+    });
+  }
+  
+  // AI Expand Button
+  var aiExpandBtn = document.getElementById('aiExpandBtn');
+  var isExpanding = false;
+  
+  function updateAiExpandBtn() {
+    if(!aiExpandBtn) return;
+    if(isAiAvailable()) {
+      aiExpandBtn.classList.add('visible');
+    } else {
+      aiExpandBtn.classList.remove('visible');
+    }
+  }
+  
+  if(aiExpandBtn && cosmicInput) {
+    aiExpandBtn.addEventListener('click', async function() {
+      if(isExpanding) return;
+      var text = cosmicInput.value.trim();
+      if(!text) return;
+      
+      isExpanding = true;
+      aiExpandBtn.disabled = true;
+      aiExpandBtn.innerHTML = '<span class="ai-icon ai-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> 生成中';
+      
+      var originalText = text;
+      var generatedText = '';
+      
+      try {
+        generatedText = await AI.expandText(text, function(full, chunk) {
+          cosmicInput.value = originalText + '\n\n' + full;
+          cosmicInput.style.height = 'auto';
+          cosmicInput.style.height = Math.min(cosmicInput.scrollHeight, 300) + 'px';
+          var wc = document.getElementById('wordCount');
+          if(wc) wc.textContent = cosmicInput.value.length + ' 字';
+        });
+        
+        cosmicInput.value = originalText + '\n\n' + generatedText;
+      } catch(e) {
+        alert('AI 扩展失败: ' + e.message);
+      } finally {
+        isExpanding = false;
+        aiExpandBtn.disabled = false;
+        aiExpandBtn.innerHTML = '<span class="ai-icon">✨</span> AI 续写';
+        cosmicInput.style.height = 'auto';
+        cosmicInput.style.height = Math.min(cosmicInput.scrollHeight, 300) + 'px';
+      }
+    });
+  }
+  
+  safeTimeout(updateAiExpandBtn, 200);
+  
+  // AI Deep Analysis
+  var aiAnalyzeBtn = document.getElementById('aiAnalyzeBtn');
+  var isAnalyzing = false;
+  
+  if(aiAnalyzeBtn) {
+    aiAnalyzeBtn.addEventListener('click', async function() {
+      if(isAnalyzing || !analysisResult) return;
+      
+      isAnalyzing = true;
+      aiAnalyzeBtn.disabled = true;
+      aiAnalyzeBtn.innerHTML = '<span class="ai-icon ai-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> 分析中';
+      
+      var aiContent = document.getElementById('aiAnalysisContent');
+      if(aiContent) {
+        aiContent.innerHTML = '<div class="ai-analysis-text" id="aiAnalysisText"></div>';
+      }
+      
+      var textEl = document.getElementById('aiAnalysisText');
+      
+      try {
+        await AI.deepAnalysis(userInput, function(full, chunk) {
+          if(textEl) {
+            var formatted = full
+              .replace(/^### (.*)$/gm, '<h4>$1</h4>')
+              .replace(/^## (.*)$/gm, '<h4>$1</h4>')
+              .replace(/^# (.*)$/gm, '<h4>$1</h4>')
+              .replace(/\n/g, '<br>');
+            textEl.innerHTML = formatted;
+          }
+        });
+      } catch(e) {
+        if(aiContent) {
+          aiContent.innerHTML = '<div style="color:#f87171;text-align:center;padding:20px;">分析失败: ' + e.message + '</div>';
+        }
+      } finally {
+        isAnalyzing = false;
+        aiAnalyzeBtn.disabled = false;
+        aiAnalyzeBtn.innerHTML = '<span class="ai-icon">✨</span> 重新生成';
+      }
+    });
+  }
+  
+  var originalResize = function() {
+    resizeStarCanvas();
+    createStars();
+  };
+  
+  window.addEventListener('resize', function() {
+    originalResize();
+    var radarCanvas = document.getElementById('radarCanvas');
+    if(radarCanvas && analysisResult) {
+      var container = radarCanvas.parentElement;
+      var size = Math.min(container.offsetWidth, 300);
+      radarCanvas.width = size;
+      radarCanvas.height = size;
+      drawRadar(analysisResult.emotions);
+    }
+  });
+}
+
+safeTimeout(bindExtraEvents, 100);
+
+checkOnlineMode().then(function(online) {
+  var connStatus = document.getElementById('connStatus');
+  if(connStatus) {
+    if(online) {
+      connStatus.classList.add('online');
+      connStatus.title = '已连接到星轨服务器';
+      connStatus.innerHTML = '<span class="status-dot"></span> 在线模式';
+    } else {
+      connStatus.title = '本地离线模式';
+    }
+  }
+});
+
+})();
+</script>
+</body>
+</html>
